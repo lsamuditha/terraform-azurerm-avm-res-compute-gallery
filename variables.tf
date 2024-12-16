@@ -1,12 +1,17 @@
 variable "location" {
   type        = string
-  description = "Azure region where the resource should be deployed."
+  description = <<DESCRIPTION
+(Required) Azure region where the resource should be deployed.
+DESCRIPTION
   nullable    = false
 }
 
 variable "name" {
   type        = string
-  description = "The name of the this resource."
+  description = <<DESCRIPTION
+(Required) Specifies the name of the Shared Image Gallery. Changing this forces a new resource to be created.
+DESCRIPTION
+  nullable    = false
 
   validation {
     condition     = can(regex("^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,78}[A-Za-z0-9])?$", var.name))
@@ -15,36 +20,15 @@ variable "name" {
 }
 
 # This is required for most resource modules
+variable "resource_group_name" {
+  type        = string
+  description = "The resource group where the resources will be deployed."
+}
+
 variable "description" {
   type        = string
+  default     = null
   description = "(Optional) The description of the shared image gallery"
-}
-
-variable "gallery_name" {
-  type        = string
-  description = "(Required) Specifies the name of the Shared Image Gallery in which this Shared Image should exist. Changing this forces a new resource to be created."
-}
-
-variable "shared_image_definations" {
-  type = map(object({
-    name    = string
-    os_type = string # Possible values are Linux and Windows
-    identifier = {
-      publisher = string # PublisherName
-      offer     = string # OfferName
-      sku       = string # ExampleSku
-    }
-  }))
-  default     = {}
-  description = <<DESCRIPTION
-    "A map to create on the Key shared image definations"
-  - `name` -   (Required) Specifies the name of the Shared Image. Changing this forces a new resource to be created.
-  - `os_type`  - (Required) The type of Operating System present in this Shared Image. Possible values are Linux and Windows. Changing this forces a new resource to be created.        
-  - `identifie` - (Required) An identifier block as defined below.
-    - `publisher` - (Required) The Publisher Name for this Gallery Image. Changing this forces a new resource to be created.
-    - `offer` - (Required) The Offer Name for this Shared Image. Changing this forces a new resource to be created.
-    - `sku` - (Required) The Name of the SKU for this Gallery Image. Changing this forces a new resource to be created.
-  DESCRIPTION
 }
 
 variable "enable_telemetry" {
@@ -77,27 +61,6 @@ DESCRIPTION
   }
 }
 
-# tflint-ignore: terraform_unused_declarations
-variable "managed_identities" {
-  type = object({
-    system_assigned            = optional(bool, false)
-    user_assigned_resource_ids = optional(set(string), [])
-  })
-  default     = {}
-  description = <<DESCRIPTION
-Controls the Managed Identity configuration on this resource. The following properties can be specified:
-
-- `system_assigned` - (Optional) Specifies if the System Assigned Managed Identity should be enabled.
-- `user_assigned_resource_ids` - (Optional) Specifies a list of User Assigned Managed Identity resource IDs to be assigned to this resource.
-DESCRIPTION
-  nullable    = false
-}
-
-variable "resource_group_name" {
-  type        = string
-  description = "The resource group where the resources will be deployed."
-}
-
 variable "role_assignments" {
   type = map(object({
     role_definition_id_or_name             = string
@@ -107,24 +70,96 @@ variable "role_assignments" {
     condition                              = optional(string, null)
     condition_version                      = optional(string, null)
     delegated_managed_identity_resource_id = optional(string, null)
+    principal_type                         = optional(string, null)
   }))
   default     = {}
   description = <<DESCRIPTION
-A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+A map of role assignments to create on the Key Vault. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-- `role_definition_id_or_name` - The ID or name of the role definition to assign to the principal.
-- `principal_id` - The ID of the principal to assign the role to.
-- `description` - The description of the role assignment.
-- `skip_service_principal_aad_check` - If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to false.
-- `condition` - The condition which will be used to scope the role assignment.
-- `condition_version` - The version of the condition syntax. Valid values are '2.0'.
+- `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+- `principal_id` - (Required) The ID of the principal to assign the role to.
+- `description` - (Optional) The description of the role assignment.
+- `skip_service_principal_aad_check` -(Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to false.
+- `condition` - (Optional) The condition which will be used to scope the role assignment.
+- `condition_version` - (Optional) The version of the condition syntax. If you are using a condition, valid values are '2.0'.
+- `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created.
+- `principal_type` - (Optional) The type of the principal_id. Possible values are User, Group and ServicePrincipal. Changing this forces a new resource to be created. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
 > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
 DESCRIPTION
   nullable    = false
 }
 
-# tflint-ignore: terraform_unused_declarations
+variable "shared_image_definitions" {
+  type = map(object({
+    name = string
+    identifier = object({
+      publisher = string
+      offer     = string
+      sku       = string
+    })
+    os_type = string
+    purchase_plan = optional(object({
+      name      = string
+      publisher = optional(string)
+      product   = optional(string)
+    }))
+    description                         = optional(string)
+    disk_types_not_allowed              = optional(list(string))
+    end_of_life_date                    = optional(string)
+    eula                                = optional(string)
+    specialized                         = optional(bool)
+    architecture                        = optional(string, "x64")
+    hyper_v_generation                  = optional(string, "V1")
+    max_recommended_vcpu_count          = optional(number)
+    min_recommended_vcpu_count          = optional(number)
+    max_recommended_memory_in_gb        = optional(number)
+    min_recommended_memory_in_gb        = optional(number)
+    privacy_statement_uri               = optional(string)
+    release_note_uri                    = optional(string)
+    trusted_launch_enabled              = optional(bool)
+    confidential_vm_supported           = optional(bool)
+    confidential_vm_enabled             = optional(bool)
+    accelerated_network_support_enabled = optional(bool)
+    tags                                = optional(map(string))
+  }))
+  default     = {}
+  description = <<DESCRIPTION
+A map to create on the Key shared image definitions
+- `name` -   (Required) Specifies the name of the Shared Image. Changing this forces a new resource to be created.
+- `identifier` - (Required) An identifier object as defined below.
+  - `publisher` - (Required) The Publisher Name for this Gallery Image. Changing this forces a new resource to be created.
+  - `offer` - (Required) The Offer Name for this Shared Image. Changing this forces a new resource to be created.
+  - `sku` - (Required) The Name of the SKU for this Gallery Image. Changing this forces a new resource to be created.- `os_type`  - (Required) The type of Operating System present in this Shared Image. Possible values are Linux and Windows. Changing this forces a new resource to be created.        
+- `os_type`  - (Required) The type of Operating System present in this Shared Image. Possible values are Linux and Windows. Changing this forces a new resource to be created.        
+- `purchase_plan` - (Optional) A purchase_plan object as defined below.
+  - `name` - (Required) The Purchase Plan Name for this Shared Image. Changing this forces a new resource to be created.
+  - `publisher` - (Optional) The Purchase Plan Publisher for this Gallery Image. Changing this forces a new resource to be created.
+  - `product` - (Optional) The Purchase Plan Product for this Gallery Image. Changing this forces a new resource to be created.
+- `description` - (Optional) A description of this Shared Image.
+- `disk_types_not_allowed` - (Optional) One or more Disk Types not allowed for the Image. Possible values include Standard_LRS and Premium_LRS.
+- `end_of_life_date` - (Optional) The end of life date in RFC3339 format of the Image.
+- `eula` - (Optional) The End User Licence Agreement for the Shared Image. Changing this forces a new resource to be created.
+- `specialized` - (Optional) Specifies that the Operating System used inside this Image has not been Generalized (for example, sysprep on Windows has not been run). Changing this forces a new resource to be created.
+> Note: It's recommended to Generalize images where possible - Specialized Images reuse the same UUID internally within each Virtual Machine, which can have unintended side-effects.
+- `architecture` - (Optional) CPU architecture supported by an OS. Possible values are x64 and Arm64. Defaults to x64. Changing this forces a new resource to be created.
+- `hyper_v_generation` - (Optional) The generation of HyperV that the Virtual Machine used to create the Shared Image is based on. Possible values are V1 and V2. Defaults to V1. Changing this forces a new resource to be created.
+- `max_recommended_vcpu_count` - (Optional) Maximum count of vCPUs recommended for the Image.
+- `min_recommended_vcpu_count` - (Optional) Minimum count of vCPUs recommended for the Image.
+- `max_recommended_memory_in_gb` - (Optional) Maximum memory in GB recommended for the Image.
+- `min_recommended_memory_in_gb` - (Optional) Minimum memory in GB recommended for the Image.
+- `privacy_statement_uri` - (Optional) The URI containing the Privacy Statement associated with this Shared Image. Changing this forces a new resource to be created.
+- `release_note_uri` - (Optional) The URI containing the Release Notes associated with this Shared Image.
+- `trusted_launch_supported` - (Optional) Specifies if supports creation of both Trusted Launch virtual machines and Gen2 virtual machines with standard security created from the Shared Image. Changing this forces a new resource to be created.
+- `trusted_launch_enabled` - (Optional) Specifies if Trusted Launch has to be enabled for the Virtual Machine created from the Shared Image. Changing this forces a new resource to be created.
+- `confidential_vm_supported` - (Optional) Specifies if supports creation of both Confidential virtual machines and Gen2 virtual machines with standard security from a compatible Gen2 OS disk VHD or Gen2 Managed image. Changing this forces a new resource to be created.
+- `confidential_vm_enabled` - (Optional) Specifies if Confidential Virtual Machines enabled. It will enable all the features of trusted, with higher confidentiality features for isolate machines or encrypted data. Available for Gen2 machines. Changing this forces a new resource to be created.
+- `accelerated_network_support_enabled` - (Optional) Specifies if the Shared Image supports Accelerated Network. Changing this forces a new resource to be created.
+- `tags` - (Optional) A mapping of tags to assign to the Shared Image.
+> Note: Only one of `trusted_launch_supported`, `trusted_launch_enabled`, `confidential_vm_supported` and `confidential_vm_enabled` can be specified.
+DESCRIPTION
+}
+
 variable "tags" {
   type        = map(string)
   default     = null
