@@ -126,7 +126,7 @@ variable "shared_image_definitions" {
   default     = {}
   description = <<DESCRIPTION
 A map to create on the Key shared image definitions
-- `name` -   (Required) Specifies the name of the Shared Image. Changing this forces a new resource to be created.
+- `name` - (Required) Specifies the name of the Shared Image. Changing this forces a new resource to be created.
 - `identifier` - (Required) An identifier object as defined below.
   - `publisher` - (Required) The Publisher Name for this Gallery Image. Changing this forces a new resource to be created.
   - `offer` - (Required) The Offer Name for this Shared Image. Changing this forces a new resource to be created.
@@ -160,8 +160,48 @@ A map to create on the Key shared image definitions
 DESCRIPTION
 }
 
+variable "sharing" {
+  type = object({
+    permission = string
+    community_gallery = optional(object({
+      eula            = string
+      prefix          = string
+      publisher_email = string
+      publisher_uri   = string
+    }))
+  })
+  default     = null
+  description = <<DESCRIPTION
+A sharing object that supports the following:
+- `permission` - (Required) The permission of the Shared Image Gallery when sharing. Possible values are Community, Groups and Private. Changing this forces a new resource to be created.
+> Note: This requires that the Preview Feature Microsoft.Compute/CommunityGalleries is enabled, see the documentation for more information.
+- `community_gallery` - (Optional) A community_gallery object that supports the following:
+  - `eula` - (Required) The End User Licence Agreement for the Shared Image Gallery. Changing this forces a new resource to be created.
+  - `prefix` - (Required) Prefix of the community public name for the Shared Image Gallery. Changing this forces a new resource to be created.
+  - `publisher_email` - (Required) Email of the publisher for the Shared Image Gallery. Changing this forces a new resource to be created.       
+  - `publisher_uri` - (Required) URI of the publisher for the Shared Image Gallery. Changing this forces a new resource to be created.
+> Note: `community_gallery` must be set when `permission` is set to `Community`.
+DESCRIPTION
+}
+
 variable "tags" {
   type        = map(string)
   default     = null
   description = "(Optional) Tags of the resource."
+}
+
+variable "timeouts" {
+  type = object({
+    create = optional(string)
+    delete = optional(string)
+    read   = optional(string)
+    update = optional(string)
+  })
+  default     = null
+  description = <<DESCRIPTION
+ - `create` - (Defaults to 60 minutes) Used when creating the Shared Image Gallery.
+ - `delete` - (Defaults to 60 minutes) Used when deleting the Shared Image Gallery.
+ - `read` - (Defaults to 5 minutes) Used when retrieving the Shared Image Gallery.
+ - `update` - (Defaults to 60 minutes) Used when updating the Shared Image Gallery.
+DESCRIPTION
 }
